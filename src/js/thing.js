@@ -10,12 +10,16 @@ var utils = require('./utils');
 // Globals
 var DEFAULT_WIDTH = 940;
 var MOBILE_BREAKPOINT = 600;
-var COUNTRY_CODE = '156';	// China
-var YEAR = '2015';
 
+var PLAYBACK_SPEED = 100;
+var FIRST_YEAR = 1990;
+var LAST_YEAR = 2100;
+
+var indexData = null;
 var graphicData = null;
 var isMobile = false;
 var ages = [];
+var year = FIRST_YEAR;
 
 /**
  * Initialize the graphic.
@@ -27,11 +31,31 @@ function init() {
 		ages.push(i)
 	}
 
-	request.json('data/countries/' + COUNTRY_CODE + '.json', function(error, data) {
+	request.json('data/country_index.json', function(error, data) {
+		indexData = data;
+
+		d3.select('#country').text('China');
+
+		loadCountry('156')
+	});
+}
+
+function loadCountry(countryCode) {
+	request.json('data/countries/' + countryCode + '.json', function(error, data) {
 		graphicData = data;
 
 		render();
 		$(window).resize(utils.throttle(onResize, 250));
+
+		window.setInterval(function() {
+			year += 1;
+
+			if (year >= LAST_YEAR) {
+				year = FIRST_YEAR;
+			}
+
+			render();
+		}, PLAYBACK_SPEED);
 	});
 }
 
@@ -54,10 +78,12 @@ function render() {
 		isMobile = false;
 	}
 
+	d3.select('#year').text(year);
+
 	renderGraphic({
 		container: '#graphic',
 		width: width,
-		data: graphicData[YEAR]
+		data: graphicData[year]
 	});
 
 	// Inform parent frame of new height
@@ -103,7 +129,7 @@ function renderGraphic(config) {
 	 * Create D3 scales
 	 */
 	var xScale = d3.scale.linear()
-		.domain([0, 20000])
+		.domain([-20000, 20000])
 		.range([0, chartWidth]);
 
 	var yScale = d3.scale.ordinal()
@@ -115,13 +141,20 @@ function renderGraphic(config) {
 	 */
 	var xAxis = d3.svg.axis()
 		.scale(xScale)
-		.orient('bottom');
+		.orient('bottom')
+		.tickFormat(function(d, i) {
+			return Math.abs(d / 1000) + 'm'
+		});
 
 	var yAxis = d3.svg.axis()
 		.scale(yScale)
 		.orient('left')
 		.tickFormat(function(d, i) {
 			if (i % 5 == 0) {
+				if (i == 100) {
+					return 100 + '+';
+				}
+
 				return d;
 			}
 
@@ -160,32 +193,41 @@ function renderGraphic(config) {
 	/*
 	 * Render bars to chart.
 	 */
-	chartElement.append('g')
-		.attr('class', 'bars')
-		.selectAll('rect')
-		.data(ages)
-		.enter()
-		.append('rect')
-			.attr('x', function(d) {
-				var x = config['data'][d][0];
+	var genders = ['male', 'female'];
 
-				if (x >= 0) {
-					return xScale(0);
-				}
+	for (var gender in genders) {
+		var direction = (gender == 0) ? -1 : 1;
 
-				return xScale(x);
-			})
-			.attr('width', function(d) {
-				return Math.abs(xScale(0) - xScale(config['data'][d][0]));
-			})
-			.attr('y', function(d) {
-				return yScale(d);
-			})
-			.attr('height', yScale.rangeBand())
-			.attr('class', function(d, i) {
-				return 'age-' + d;
-			});
+		chartElement.append('g')
+			.attr('class', 'bars')
+			.selectAll('rect')
+			.data(ages)
+			.enter()
+			.append('rect')
+				.attr('x', function(d) {
+					var x = config['data'][d][gender] * direction;
+
+					if (x >= 0) {
+						return xScale(0);
+					}
+
+					return xScale(x);
+				})
+				.attr('width', function(d) {
+					var x = config['data'][d][gender] * direction;
+
+					return Math.abs(xScale(0) - xScale(x));
+				})
+				.attr('y', function(d) {
+					return yScale(d);
+				})
+				.attr('height', yScale.rangeBand())
+				.attr('class', function(d) {
+					return 'age-' + d + ' gender-' + genders[gender];
+				});
+	}
 }
+
 
 // Bind on-load handler
 $(document).ready(function() {
