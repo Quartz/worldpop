@@ -9,6 +9,9 @@ import json
 LocID,Location,VarID,Variant,Time,AgeGrp,AgeGrpStart,AgeGrpSpan,PopMale,PopFemale,PopTotal
 """
 
+# Data prior to this year has 80+ grouping
+MIN_YEAR = 1990
+
 
 def main():
     f = open('data/WPP2015_INT_F3_Population_By_Sex_Annual_Single_Medium.csv', encoding='latin-1')
@@ -25,34 +28,42 @@ def main():
 
         if country_code != current_country:
             if current_country:
-                save(current_country, data)
+                save_country(current_country, data)
 
             current_country = country_code
             countries.append((country_code, country))
 
         year = row[4]
+
+        if int(year) < MIN_YEAR:
+            continue
+
         age = row[6]
-        male = row[8]
-        female = row[9]
+        male = float(row[8])
+        female = float(row[9])
 
         data[year][age] = [male, female]
 
     f.close()
 
+    # Save last country
+    save_country(current_country, data)
+
+    # Save country list
     save_index(countries)
 
 
-def save(country, data):
+def save_country(country, data):
     print('Saving %s' % country)
 
-    with open('src/data/%s.json' % country, 'w') as f:
+    with open('src/data/countries/%s.json' % country, 'w') as f:
         json.dump(data, f)
 
 
 def save_index(countries):
     print('Saving country index')
 
-    with open('src/data/index.json', 'w') as f:
+    with open('src/data/country_index.json', 'w') as f:
         json.dump(countries, f)
 
 

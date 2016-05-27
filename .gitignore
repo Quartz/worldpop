@@ -4,3 +4,4 @@ build
 .DS_Store
 .tmp
 data/*.csv
+src/data/countries/*.json
