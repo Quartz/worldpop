@@ -20,6 +20,10 @@ var countryData = {};
 var isMobile = false;
 var ages = [];
 var year = FIRST_YEAR;
+var countrySelector = null;
+var ageSelector = null;
+var selectedCountry = '840';
+var selectedAge = 30;
 
 /**
  * Initialize the graphic.
@@ -34,16 +38,88 @@ function init() {
 	request.json('data/country_index.json', function(error, data) {
 		indexData = data;
 
+		initCountriesList();
+		initAgeList();
+
 		loadCountry('156', function(data) {
 			loadCountry('356', function(data) {
 				loadCountry('900', function(data) {
-					renderAll();
+					loadCountry(selectedCountry, function(data) {
+						renderAll();
 
-					$(window).resize(utils.throttle(renderAll, 250));
+						$(window).resize(utils.throttle(renderAll, 250));
+					});
 				})
 			});
 		});
 	});
+}
+
+/**
+ * Initialize the country picker.
+ */
+function initCountriesList() {
+	countrySelector = d3.select('#countries');
+
+	countrySelector.selectAll("option")
+		.data(indexData)
+		.enter()
+		.append("option")
+		.attr("value", function (d) { return d[0]; })
+		.attr('selected', function(d) {
+			if (d[0] == selectedCountry) {
+				return 'selected';
+			}
+
+			return null;
+		})
+		.text(function (d) { return d[1]; });
+
+	countrySelector.on('change', onCountrySelected)
+}
+
+/**
+ * Initialize the age picker.
+ */
+function initAgeList() {
+	ageSelector = d3.select('#ages');
+
+	ageSelector.selectAll("option")
+		.data(ages)
+		.enter()
+		.append("option")
+		.attr("value", function (d) { d; })
+		.attr('selected', function(d) {
+			if (d == selectedAge) {
+				return 'selected';
+			}
+
+			return null;
+		})
+		.text(function (d) { return d; });
+
+	ageSelector.on('change', onAgeSelected)
+}
+
+/**
+ * User has picked a country.
+ */
+function onCountrySelected() {
+	selectedCountry = d3.select(this).node().value;
+
+	loadCountry(selectedCountry, function() {
+		render('#country', countryData[selectedCountry][year], 20000, true);
+	});
+}
+
+/**
+ * User has picked an age.
+ */
+function onAgeSelected() {
+	selectedAge = d3.select(this).node().value;
+
+	render('#world', countryData['900'][year], 100000, true);
+	render('#country', countryData[selectedCountry][year], 20000, true);
 }
 
 /**
@@ -76,20 +152,22 @@ function renderAll() {
 
 	render('#china', countryData['156'][year], 20000);
 	render('#india', countryData['356'][year], 20000);
-	render('#world', countryData['900'][year], 100000);
+	render('#world', countryData['900'][year], 100000, true);
+	render('#country', countryData[selectedCountry][year], 20000, true);
 }
 
 /**
  * Figure out the current frame size and render the graphic.
  */
-function render(container, data, scaleMax) {
+function render(container, data, scaleMax, highlightAge) {
 	var width = $(container).width();
 
 	renderGraphic({
 		container: container,
 		width: width,
 		data: data,
-		max: scaleMax
+		max: scaleMax,
+		highlightAge: highlightAge
 	});
 
 	// Inform parent frame of new height
@@ -231,7 +309,13 @@ function renderGraphic(config) {
 				})
 				.attr('height', yScale.rangeBand())
 				.attr('class', function(d) {
-					return 'age-' + d + ' gender-' + genders[gender];
+					var cls = 'age-' + d + ' gender-' + genders[gender];
+
+					if (config['highlightAge'] && d == selectedAge) {
+						cls += ' highlight';
+					}
+
+					return cls;
 				});
 	}
 }
