@@ -13,10 +13,10 @@ var MOBILE_BREAKPOINT = 600;
 
 var PLAYBACK_SPEED = 100;
 var FIRST_YEAR = 1990;
-var LAST_YEAR = 2100;
+var LAST_YEAR = 2050;
 
 var indexData = null;
-var graphicData = null;
+var countryData = {};
 var isMobile = false;
 var ages = [];
 var year = FIRST_YEAR;
@@ -34,42 +34,38 @@ function init() {
 	request.json('data/country_index.json', function(error, data) {
 		indexData = data;
 
-		d3.select('#country').text('China');
+		loadCountry('156', function(data) {
+			loadCountry('356', function(data) {
+				loadCountry('900', function(data) {
+					renderAll();
 
-		loadCountry('156')
+					$(window).resize(utils.throttle(renderAll, 250));
+				})
+			});
+		});
 	});
 }
 
-function loadCountry(countryCode) {
+/**
+ * Load the data for a country and invoke the callback with it.
+ */
+function loadCountry(countryCode, callback) {
+	if (countryCode in countryData) {
+		callback(countryData[countryCode]);
+		return;
+	}
+
 	request.json('data/countries/' + countryCode + '.json', function(error, data) {
-		graphicData = data;
+		countryData[countryCode] = data;
 
-		render();
-		$(window).resize(utils.throttle(onResize, 250));
-
-		window.setInterval(function() {
-			year += 1;
-
-			if (year >= LAST_YEAR) {
-				year = FIRST_YEAR;
-			}
-
-			render();
-		}, PLAYBACK_SPEED);
+		callback(data);
 	});
 }
 
 /**
- * Invoke on resize. By default simply rerenders the graphic.
+ * Invoke on resize. Rerenders the graphics
  */
-function onResize() {
-	render();
-}
-
-/**
- * Figure out the current frame size and render the graphic.
- */
-function render() {
+function renderAll() {
 	var width = $('#interactive-content').width();
 
 	if (width <= MOBILE_BREAKPOINT) {
@@ -78,12 +74,22 @@ function render() {
 		isMobile = false;
 	}
 
-	d3.select('#year').text(year);
+	render('#china', countryData['156'][year], 20000);
+	render('#india', countryData['356'][year], 20000);
+	render('#world', countryData['900'][year], 100000);
+}
+
+/**
+ * Figure out the current frame size and render the graphic.
+ */
+function render(container, data, scaleMax) {
+	var width = $(container).width();
 
 	renderGraphic({
-		container: '#graphic',
+		container: container,
 		width: width,
-		data: graphicData[year]
+		data: data,
+		max: scaleMax
 	});
 
 	// Inform parent frame of new height
@@ -98,9 +104,9 @@ function renderGraphic(config) {
 	var aspectRatio = 1;
 
 	var margins = {
-		top: 0,
+		top: 10,
 		right: 30,
-		bottom: 30,
+		bottom: 50,
 		left: 50
 	};
 
@@ -129,12 +135,12 @@ function renderGraphic(config) {
 	 * Create D3 scales
 	 */
 	var xScale = d3.scale.linear()
-		.domain([-20000, 20000])
+		.domain([-config['max'], config['max']])
 		.range([0, chartWidth]);
 
 	var yScale = d3.scale.ordinal()
 		.domain(ages)
-		.rangeRoundBands([0, chartWidth], .1);
+		.rangeBands([0, chartWidth]);
 
 	/*
 	 * Create D3 axes.
@@ -142,6 +148,7 @@ function renderGraphic(config) {
 	var xAxis = d3.svg.axis()
 		.scale(xScale)
 		.orient('bottom')
+		.ticks(isMobile ? 5 : 7)
 		.tickFormat(function(d, i) {
 			return Math.abs(d / 1000) + 'm'
 		});
@@ -150,7 +157,9 @@ function renderGraphic(config) {
 		.scale(yScale)
 		.orient('left')
 		.tickFormat(function(d, i) {
-			if (i % 5 == 0) {
+			var interval = isMobile ? 20 : 10;
+
+			if (i % interval == 0) {
 				if (i == 100) {
 					return 100 + '+';
 				}
@@ -172,7 +181,6 @@ function renderGraphic(config) {
 
 	chartElement.append('g')
 	   .attr('class', 'y axis')
-	//    .attr('transform', utils.makeTranslate(0, chartHeight))
 	   .call(yAxis);
 
 	/*

@@ -11,6 +11,7 @@ LocID,Location,VarID,Variant,Time,AgeGrp,AgeGrpStart,AgeGrpSpan,PopMale,PopFemal
 
 # Data prior to this year has 80+ grouping
 MIN_YEAR = 1990
+MAX_YEAR = 2050
 
 
 def main():
@@ -35,7 +36,7 @@ def main():
 
         year = row[4]
 
-        if int(year) < MIN_YEAR:
+        if int(year) < MIN_YEAR or int(year) > MAX_YEAR:
             continue
 
         age = row[6]

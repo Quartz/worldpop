@@ -1,8 +1,36 @@
 // Interactive-specific css here
 
+clearfix()
+    &:after
+        content: ".";
+        visibility: hidden;
+        display: block;
+        height: 0;
+        clear: both;
+
+.pair
+    clearfix()
+
+    .left,.right
+        float: left
+        width: 50%
+
 rect
     &.gender-male
-        fill: blue
+        fill: $qz-purp-1
+        stroke: $qz-background-gray
+        stroke-width: 1px
 
     &.gender-female
-        fill: pink
+        fill: $qz-blue-1
+        stroke: $qz-background-gray
+        stroke-width: 1px
+
+/*
+ * Media queries
+ */
+@media screen and (max-width: 600px)
+    .pair
+        .left,.right
+            float: none
+            width: 100%
