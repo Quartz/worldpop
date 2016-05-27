@@ -24,6 +24,7 @@ var countrySelector = null;
 var ageSelector = null;
 var selectedCountry = '840';
 var selectedAge = 30;
+var selectedMax = null;
 
 /**
  * Initialize the graphic.
@@ -45,6 +46,8 @@ function init() {
 			loadCountry('356', function(data) {
 				loadCountry('900', function(data) {
 					loadCountry(selectedCountry, function(data) {
+						selectedMax = calculateMax(data);
+						
 						renderAll();
 
 						$(window).resize(utils.throttle(renderAll, 250));
@@ -107,9 +110,42 @@ function initAgeList() {
 function onCountrySelected() {
 	selectedCountry = d3.select(this).node().value;
 
+	var name = null;
+
+	for (var i in indexData) {
+		if (indexData[i][0] == selectedCountry) {
+			name = indexData[i][1];
+			break;
+		}
+	}
+
 	loadCountry(selectedCountry, function() {
-		render('#country', countryData[selectedCountry][year], 20000, true);
+		var data = countryData[selectedCountry];
+
+		d3.select('#country-name').text(name);
+
+		selectedMax = calculateMax(data);
+		console.log(selectedMax);
+
+		render('#country', data[year], selectedMax, true);
 	});
+}
+
+/**
+ * Calculate the max value in this country dataset.
+ */
+function calculateMax(data) {
+	var m = 0;
+
+	for (var year in data) {
+		var ages = data[year];
+
+		for (var i in ages) {
+			m = Math.max(m, ages[i][0], ages[i][1]);
+		}
+	}
+
+	return m;
 }
 
 /**
@@ -119,7 +155,7 @@ function onAgeSelected() {
 	selectedAge = d3.select(this).node().value;
 
 	render('#world', countryData['900'][year], 100000, true);
-	render('#country', countryData[selectedCountry][year], 20000, true);
+	render('#country', countryData[selectedCountry][year], selectedMax, true);
 }
 
 /**
@@ -153,7 +189,7 @@ function renderAll() {
 	render('#china', countryData['156'][year], 20000);
 	render('#india', countryData['356'][year], 20000);
 	render('#world', countryData['900'][year], 100000, true);
-	render('#country', countryData[selectedCountry][year], 20000, true);
+	render('#country', countryData[selectedCountry][year], selectedMax, true);
 }
 
 /**
